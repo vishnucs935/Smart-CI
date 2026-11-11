@@ -1,0 +1,101 @@
+
+name: SmartCI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Download repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Configure Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 3. Install project dependencies
+      - name: Install dependencies
+        id: install-dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. Restore persistent SmartCI cache
+      - name: Restore SmartCI Cache
+        uses: actions/cache@v4
+        with:
+          path: .smartci-cache/
+          key: smartci-${{ runner.os }}-py312-${{ hashFiles('src/**/*.py', 'requirements.txt') }}
+          restore-keys: |
+            smartci-${{ runner.os }}-py312-
+
+      # 5. Run Smart Build Cache
+      - name: Run Smart Build Cache
+        run: |
+          mkdir -p reports
+          python -m scripts.cache_build \
+            --output reports/build-cache.json
+
+      # 6. Select and run related tests
+      - name: Select and run related tests
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p reports
+          python -m scripts.select_tests \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --run \
+            --report reports/test-selection.json
+
+      # 7. Always run complete test suite as a safety check
+      - name: Always run the full test suite
+        if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
+        run: |
+          mkdir -p reports
+          set -o pipefail
+          python -m pytest -v --junitxml=reports/junit.xml \
+            2>&1 | tee reports/build.log
+
+      # 8. Generate, train and use ML failure prediction
+      - name: Run ML Failure Prediction
+        if: ${{ always() && steps.install-dependencies.outcome == 'success' }}
+        run: |
+          python -m ml.predict_failure generate
+          python -m ml.predict_failure train
+          python -m ml.predict_failure predict \
+            --features ml/example_features.json
+
+      # 9. Extract useful information from build logs
+      - name: Summarize build log
+        if: always()
+        run: |
+          if [ -f reports/build.log ]; then
+            python -m scripts.summarize_log \
+              reports/build.log \
+              --provider extractive
+          else
+            echo "Build log not available."
+          fi
+
+      # 10. Upload reports even when earlier steps fail
+      - name: Upload test and ML reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartci-reports
+          path: reports/
+          if-no-files-found: ignore
