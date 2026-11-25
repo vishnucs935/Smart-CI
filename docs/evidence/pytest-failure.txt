@@ -1,0 +1,32 @@
+env:
+  pythonLocation: /opt/hostedtoolcache/Python/3.12.16/x64
+  PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib/pkgconfig
+  Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+  Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+  Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+  LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib
+##[endgroup]
+============================= test session starts ==============================
+platform linux -- Python 3.12.16, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/runner/work/Smart-CI/Smart-CI
+configfile: pytest.ini
+collected 10 items
+
+tests/test_cart.py ..                                                    [ 20%]
+tests/test_inventory.py ...                                              [ 50%]
+tests/test_pricing.py .F...                                              [100%]
+
+=================================== FAILURES ===================================
+___________________________ test_discount_boundaries ___________________________
+
+    def test_discount_boundaries():
+>       assert apply_discount(100, 0) == 101.0
+E       assert 100.0 == 101.0
+E        +  where 100.0 = apply_discount(100, 0)
+
+tests/test_pricing.py:11: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_pricing.py::test_discount_boundaries - assert 100.0 == 101.0
+ +  where 100.0 = apply_discount(100, 0)
+========================= 1 failed, 9 passed in 0.04s ==========================
+##[error]Process completed with exit code 1.

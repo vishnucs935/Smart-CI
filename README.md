@@ -62,3 +62,16 @@ FAILED tests/test_pricing.py::test_discount_boundaries - assert 100.0 == 101.0
 Restoring the expected value to 100.0 made all 10 tests pass again. Run #6 took **18 seconds** overall, including **4 seconds** for dependency installation. [Repaired run](https://github.com/vishnucs935/Smart-CI/actions/runs/45601891987)
 
 ![Successful GitHub Actions summary after restoring the correct assertion](docs/screenshots/green-run.png)
+
+## Assignment 4 · Follow-up experiments
+
+Each document includes the procedure, measured results and lessons learned. Run the commands from the repository root using the Python environment above.
+
+| Part | Learning document |
+|---|---|
+| 4.2 | [Smart build-cache invalidation](docs/assignments/ASSIGNMENT_4_2.md) |
+| 4.3 | [Dynamic test-subset routing](docs/assignments/ASSIGNMENT_4_3.md) |
+| 4.4 | [LLM-based build/error-log summarization](docs/assignments/ASSIGNMENT_4_4.md) |
+| 4.5 | [Build-failure prediction](docs/assignments/ASSIGNMENT_4_5.md) |
+
+The baseline timings and screenshots above refer to the Part 4.1 checkpoint. The current workflow adds cache verification, affected-test execution, log analysis and a prediction report.

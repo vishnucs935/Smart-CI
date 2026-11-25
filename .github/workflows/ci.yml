@@ -1,5 +1,5 @@
 name: CI
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 permissions:
   contents: read
@@ -12,11 +12,40 @@ jobs:
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
+        id: python
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run tests
+        run: python -m pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: .smartci-cache
+          key: build-v1-${{ runner.os }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('src/**/*.py', 'scripts/cache_build.py', 'scripts/dependencies.py', 'requirements.txt') }}
+          restore-keys: |
+            build-v1-${{ runner.os }}-${{ steps.python.outputs.python-version }}-
+      - name: Compile changed modules
+        run: python -m scripts.cache_build --output reports/build-cache.json
+      - name: Run affected tests
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
           set -o pipefail
-          pytest 2>&1 | tee build.log
+          python -u -m scripts.select_tests --base "$BASE" --head HEAD --run |& tee build.log
+      - name: Summarize test output
+        if: ${{ !cancelled() && hashFiles('build.log') != '' }}
+        run: python -m scripts.summarize_log build.log
+      - name: Evaluate failure predictor
+        run: |
+          python -m ml.predict_failure train
+          python -m ml.predict_failure predict --features ml/example_features.json
+      - name: Generate model summary of the recorded failure
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-llm.txt
+          python -m scripts.summarize_log docs/evidence/pytest-failure.txt --provider local-llm --output reports/llm-summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smartci-reports
+          path: reports/
